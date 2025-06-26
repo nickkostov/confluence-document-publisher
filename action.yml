@@ -1,16 +1,17 @@
 name: 'Post Document to Confluence'
 description: 'Convert Markdown to HTML and upload it to Confluence'
 author: nickkkostov
+
 branding:
   icon: "align-justify"
-  color: "greens"
+  color: "green"
 
 inputs:
   input-md-file:
     description: 'Markdown input file (required)'
     required: true
   output-html-file:
-    description: 'Output HTML file path (required)'
+    description: 'Output HTML file name (will be generated and uploaded)'
     required: true
   space-key:
     description: 'Confluence space key (required)'
@@ -34,7 +35,6 @@ runs:
     - name: Ensure Python ≥ 3.7 and Install Dependencies
       shell: bash
       run: |
-        # Check Python version
         if ! command -v python3 >/dev/null; then
           echo "❌ python3 is not installed"; exit 1
         fi
@@ -46,7 +46,6 @@ runs:
 
         echo "✅ Python version $PYVER OK"
 
-        # Detect OS and install pandoc
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
           if command -v apt-get >/dev/null; then
             sudo apt-get update && sudo apt-get install -y pandoc
@@ -63,7 +62,6 @@ runs:
           echo "❌ Unsupported OS: $OSTYPE"; exit 1
         fi
 
-        # Install Python dependencies
         pip3 install --upgrade pip
         pip3 install click requests
 
@@ -72,10 +70,9 @@ runs:
       run: |
         python3 ${{ github.action_path }}/post-doc.py \
           --input-md-file "${{ inputs.input-md-file }}" \
-          --output-html-file "${{ inputs.output-html-file }}" \
+          --html-file "${{ inputs.output-html-file }}" \
           --pat "${{ inputs.pat }}" \
           --base-url "${{ inputs.base-url }}" \
           --space-key "${{ inputs.space-key }}" \
           --page-title "${{ inputs.page-title }}" \
-          --html-file "${{ inputs.output-html-file }}" \
           --parent-page-id "${{ inputs.parent-page-id }}"

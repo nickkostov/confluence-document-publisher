@@ -12,27 +12,33 @@ import os
 @click.option('--space-key', required=True, help='Space key in Confluence')
 @click.option('--page-title', required=True, help='Title prefix for the Confluence page')
 @click.option('--input-md-file', required=True, type=click.Path(exists=True), help='Input Markdown file')
-@click.option('--output-html-file', required=True, type=click.Path(), help='Output HTML file path')
-@click.option('--html-file', required=True, type=click.Path(exists=True), help='HTML file to upload (usually same as --output-html-file)')
+@click.option('--html-file', required=True, type=str, help='Path for the output HTML file (will be generated and uploaded)')
 @click.option('--parent-page-id', required=True, type=int, help='ID of the parent page in Confluence')
-def create_document(pat, base_url, space_key, page_title, input_md_file, output_html_file, html_file, parent_page_id):
-    """Converts Markdown to HTML and uploads to Confluence."""
+def create_document(pat, base_url, space_key, page_title, input_md_file, html_file, parent_page_id):
+    """Converts Markdown to HTML (using the given html-file name) and uploads to Confluence."""
 
-    click.echo(f"Converting: {input_md_file} → {output_html_file} using pandoc")
+    # === Step 1: Convert Markdown to HTML ===
+    click.echo(f"Converting: {input_md_file} → {html_file} using pandoc")
     try:
         subprocess.run([
             "pandoc", input_md_file,
             "-f", "markdown", "-t", "html", "-s",
-            "-o", output_html_file
+            "-o", html_file
         ], check=True)
     except subprocess.CalledProcessError as e:
         click.echo(f"❌ Error while running pandoc: {e}", err=True)
         sys.exit(1)
 
+    if not os.path.exists(html_file):
+        click.echo(f"❌ HTML file '{html_file}' not found after conversion", err=True)
+        sys.exit(1)
+
+    # === Step 2: Build page title ===
     run_date = date.today()
     document_name = f"{page_title} - {run_date}"
     click.echo(f"Generated Confluence page title: {document_name}")
 
+    # === Step 3: Read HTML content ===
     try:
         with open(html_file, "r", encoding="utf-8") as f:
             html_content = f.read()
@@ -40,6 +46,7 @@ def create_document(pat, base_url, space_key, page_title, input_md_file, output_
         click.echo(f"❌ Failed to read HTML file: {e}", err=True)
         sys.exit(1)
 
+    # === Step 4: Prepare and send API request ===
     payload = {
         "type": "page",
         "title": document_name,
@@ -59,7 +66,6 @@ def create_document(pat, base_url, space_key, page_title, input_md_file, output_
         "Accept": "application/json"
     }
 
-    # === Step 5: Send request to Confluence ===
     click.echo("Uploading page to Confluence...")
     response = requests.post(
         f"{base_url}/rest/api/content",
