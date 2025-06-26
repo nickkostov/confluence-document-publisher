@@ -1,0 +1,77 @@
+name: 'Post Document to Confluence'
+description: 'Convert Markdown to HTML and upload it to Confluence'
+
+inputs:
+  input-md-file:
+    description: 'Markdown input file (required)'
+    required: true
+  output-html-file:
+    description: 'Output HTML file path (required)'
+    required: true
+  space-key:
+    description: 'Confluence space key (required)'
+    required: true
+  page-title:
+    description: 'Title prefix for the Confluence page (required)'
+    required: true
+  pat:
+    description: 'Personal Access Token for Confluence (required)'
+    required: true
+  base-url:
+    description: 'Base URL of the Confluence instance (required)'
+    required: true
+  parent-page-id:
+    description: 'Parent page ID in Confluence (required)'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Ensure Python ≥ 3.7 and Install Dependencies
+      shell: bash
+      run: |
+        # Check Python version
+        if ! command -v python3 >/dev/null; then
+          echo "❌ python3 is not installed"; exit 1
+        fi
+
+        PYVER=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+        if [[ "$(printf '%s\n' "3.7" "$PYVER" | sort -V | head -n1)" != "3.7" ]]; then
+          echo "❌ Python >= 3.7 required. Found: $PYVER"; exit 1
+        fi
+
+        echo "✅ Python version $PYVER OK"
+
+        # Detect OS and install pandoc
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          if command -v apt-get >/dev/null; then
+            sudo apt-get update && sudo apt-get install -y pandoc
+          elif command -v dnf >/dev/null; then
+            sudo dnf install -y pandoc
+          elif command -v yum >/dev/null; then
+            sudo yum install -y epel-release && sudo yum install -y pandoc
+          else
+            echo "❌ Unsupported Linux package manager"; exit 1
+          fi
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+          brew install pandoc || true
+        else
+          echo "❌ Unsupported OS: $OSTYPE"; exit 1
+        fi
+
+        # Install Python dependencies
+        pip3 install --upgrade pip
+        pip3 install click requests
+
+    - name: Run post-doc.py
+      shell: bash
+      run: |
+        python3 ${{ github.action_path }}/post-doc.py \
+          --input-md-file "${{ inputs.input-md-file }}" \
+          --output-html-file "${{ inputs.output-html-file }}" \
+          --pat "${{ inputs.pat }}" \
+          --base-url "${{ inputs.base-url }}" \
+          --space-key "${{ inputs.space-key }}" \
+          --page-title "${{ inputs.page-title }}" \
+          --html-file "${{ inputs.output-html-file }}" \
+          --parent-page-id "${{ inputs.parent-page-id }}"
