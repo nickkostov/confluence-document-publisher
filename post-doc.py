@@ -18,7 +18,6 @@ import os
 def create_document(pat, base_url, space_key, page_title, input_md_file, output_html_file, html_file, parent_page_id):
     """Converts Markdown to HTML and uploads to Confluence."""
 
-    # === Step 1: Convert Markdown to HTML using pandoc ===
     click.echo(f"Converting: {input_md_file} → {output_html_file} using pandoc")
     try:
         subprocess.run([
@@ -30,12 +29,10 @@ def create_document(pat, base_url, space_key, page_title, input_md_file, output_
         click.echo(f"❌ Error while running pandoc: {e}", err=True)
         sys.exit(1)
 
-    # === Step 2: Generate title ===
     run_date = date.today()
     document_name = f"{page_title} - {run_date}"
     click.echo(f"Generated Confluence page title: {document_name}")
 
-    # === Step 3: Read the HTML content ===
     try:
         with open(html_file, "r", encoding="utf-8") as f:
             html_content = f.read()
@@ -43,7 +40,6 @@ def create_document(pat, base_url, space_key, page_title, input_md_file, output_
         click.echo(f"❌ Failed to read HTML file: {e}", err=True)
         sys.exit(1)
 
-    # === Step 4: Prepare Confluence payload ===
     payload = {
         "type": "page",
         "title": document_name,
