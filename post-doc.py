@@ -22,7 +22,7 @@ def create_document(pat, base_url, space_key, page_title, input_md_file, html_fi
     try:
         subprocess.run([
             "pandoc", input_md_file,
-            "-f", "markdown", "-t", "html", "-s",
+            "-f", "markdown", "-t", "html",,
             "-o", html_file
         ], check=True)
     except subprocess.CalledProcessError as e:
